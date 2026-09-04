@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Exercício - Retas e Triângulos com Bresenham</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #1e1e1e;
+    color: #eee;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+  }
+  canvas {
+    background: #ffffff;
+    border: 2px solid #444;
+    cursor: crosshair;
+  }
+  #info {
+    margin-bottom: 10px;
+    text-align: center;
+    line-height: 1.5;
+  }
+  #status {
+    font-weight: bold;
+    color: #4ea1ff;
+  }
+</style>
+</head>
+<body>
+
+<div id="info">
+  <p>Pressione <b>R</b> para ativar o traçado de <b>retas</b> (2 cliques) ou <b>T</b> para ativar o traçado de <b>triângulos</b> (3 cliques).</p>
+  <p>Modo atual: <span id="status">Reta</span> | Cliques dados: <span id="pontos">0</span></p>
+</div>
+
+<canvas id="tela" width="600" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById('tela');
+const ctx = canvas.getContext('2d');
+const statusEl = document.getElementById('status');
+const pontosEl = document.getElementById('pontos');
+
+// ---------- Estado global ----------
+let corAtual = 'blue';   // cor inicial
+let modo = 'reta';       // 'reta' ou 'triangulo'
+let pontos = [];         // pontos clicados aguardando a figura
+
+// ---------- Funções do exercício 1 (reaproveitadas) ----------
+
+// Muda a cor utilizada nos próximos traçados
+function mudarCor(novaCor) {
+  corAtual = novaCor;
+}
+
+// Traça uma reta entre (x0,y0) e (x1,y1) usando o algoritmo de Bresenham
+function tracarLinha(x0, y0, x1, y1) {
+  x0 = Math.round(x0); y0 = Math.round(y0);
+  x1 = Math.round(x1); y1 = Math.round(y1);
+
+  ctx.fillStyle = corAtual;
+
+  let dx = Math.abs(x1 - x0);
+  let dy = -Math.abs(y1 - y0);
+  let sx = x0 < x1 ? 1 : -1;
+  let sy = y0 < y1 ? 1 : -1;
+  let err = dx + dy;
+
+  while (true) {
+    ctx.fillRect(x0, y0, 1, 1); // "pixel"
+    if (x0 === x1 && y0 === y1) break;
+    let e2 = 2 * err;
+    if (e2 >= dy) { err += dy; x0 += sx; }
+    if (e2 <= dx) { err += dx; y0 += sy; }
+  }
+}
+
+// ---------- Nova função deste exercício ----------
+
+// Traça um triângulo (apenas as arestas) a partir de 3 vértices,
+// reutilizando a função de traçar retas (Bresenham)
+function tracarTriangulo(p1, p2, p3) {
+  tracarLinha(p1.x, p1.y, p2.x, p2.y);
+  tracarLinha(p2.x, p2.y, p3.x, p3.y);
+  tracarLinha(p3.x, p3.y, p1.x, p1.y);
+}
+
+// ---------- Utilitários ----------
+
+function limparTela() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function atualizarInfo() {
+  statusEl.textContent = modo === 'reta' ? 'Reta' : 'Triângulo';
+  pontosEl.textContent = pontos.length;
+}
+
+// ---------- Figura inicial exigida pelo enunciado ----------
+// Uma linha azul de (0,0) a (0,0)
+limparTela();
+mudarCor('blue');
+tracarLinha(0, 0, 0, 0);
+atualizarInfo();
+
+// ---------- Controle de teclado ----------
+window.addEventListener('keydown', (e) => {
+  const tecla = e.key.toLowerCase();
+  if (tecla === 'r') {
+    modo = 'reta';
+    pontos = [];
+    atualizarInfo();
+  } else if (tecla === 't') {
+    modo = 'triangulo';
+    pontos = [];
+    atualizarInfo();
+  }
+});
+
+// ---------- Controle de mouse ----------
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  pontos.push({ x, y });
+  atualizarInfo();
+
+  if (modo === 'reta' && pontos.length === 2) {
+    limparTela();                 // apaga a figura anterior
+    tracarLinha(pontos[0].x, pontos[0].y, pontos[1].x, pontos[1].y);
+    pontos = [];
+  } else if (modo === 'triangulo' && pontos.length === 3) {
+    limparTela();                 // apaga a figura anterior
+    tracarTriangulo(pontos[0], pontos[1], pontos[2]);
+    pontos = [];
+  }
+
+  atualizarInfo();
+});
+</script>
+
+</body>
+</html>
