@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Exercício - Retas, Triângulos, Cor e Espessura (Bresenham)</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #1e1e1e;
+    color: #eee;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+  }
+  canvas {
+    background: #ffffff;
+    border: 2px solid #444;
+    cursor: crosshair;
+  }
+  #info {
+    margin-bottom: 10px;
+    text-align: center;
+    line-height: 1.6;
+  }
+  #info span {
+    font-weight: bold;
+    color: #4ea1ff;
+  }
+  #paleta {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .swatch {
+    width: 22px;
+    height: 22px;
+    border: 1px solid #666;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    text-shadow: 0 0 2px #000;
+  }
+</style>
+</head>
+<body>
+
+<div id="info">
+  <p>
+    <b>R</b> = traçar reta (2 cliques) &nbsp;|&nbsp;
+    <b>T</b> = traçar triângulo (3 cliques) &nbsp;|&nbsp;
+    <b>K</b> = mudar cor (teclas 0-9) &nbsp;|&nbsp;
+    <b>E</b> = mudar espessura (teclas 1-9)
+  </p>
+  <p>
+    Modo: <span id="status">Reta</span> |
+    Cor: <span id="corInfo">azul (1)</span> |
+    Espessura: <span id="espInfo">1</span> |
+    Cliques: <span id="pontos">0</span>
+  </p>
+  <div id="paleta"></div>
+</div>
+
+<canvas id="tela" width="600" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById('tela');
+const ctx = canvas.getContext('2d');
+const statusEl = document.getElementById('status');
+const corInfoEl = document.getElementById('corInfo');
+const espInfoEl = document.getElementById('espInfo');
+const pontosEl = document.getElementById('pontos');
+const paletaEl = document.getElementById('paleta');
+
+// ---------- Paleta de cores (índices 0 a 9) ----------
+const cores = [
+  'black', 'blue', 'red', 'green', 'yellow',
+  'orange', 'purple', 'cyan', 'magenta', 'gray'
+];
+
+// monta a legenda visual da paleta
+cores.forEach((c, i) => {
+  const div = document.createElement('div');
+  div.className = 'swatch';
+  div.style.background = c;
+  div.textContent = i;
+  paletaEl.appendChild(div);
+});
+
+// ---------- Estado global ----------
+let corIndice = 1;          // 1 = blue (linha inicial azul)
+let corAtual = cores[corIndice];
+let espessura = 1;          // espessura inicial do traçado
+let modo = 'reta';          // 'reta' | 'triangulo' | 'cor' | 'espessura'
+let pontos = [];            // pontos clicados aguardando a figura
+
+// ---------- Funções principais ----------
+
+// Muda a cor utilizada nos próximos traçados
+function mudarCor(indice) {
+  corIndice = indice;
+  corAtual = cores[indice];
+}
+
+// Muda a espessura utilizada nos próximos traçados
+function mudarEspessura(valor) {
+  espessura = valor;
+}
+
+// Traça uma reta entre (x0,y0) e (x1,y1) usando o algoritmo de Bresenham,
+// respeitando a espessura atual
+function tracarLinha(x0, y0, x1, y1) {
+  x0 = Math.round(x0); y0 = Math.round(y0);
+  x1 = Math.round(x1); y1 = Math.round(y1);
+
+  ctx.fillStyle = corAtual;
+  const metade = Math.floor(espessura / 2);
+
+  let dx = Math.abs(x1 - x0);
+  let dy = -Math.abs(y1 - y0);
+  let sx = x0 < x1 ? 1 : -1;
+  let sy = y0 < y1 ? 1 : -1;
+  let err = dx + dy;
+
+  while (true) {
+    ctx.fillRect(x0 - metade, y0 - metade, espessura, espessura);
+    if (x0 === x1 && y0 === y1) break;
+    let e2 = 2 * err;
+    if (e2 >= dy) { err += dy; x0 += sx; }
+    if (e2 <= dx) { err += dx; y0 += sy; }
+  }
+}
+
+// Traça um triângulo (apenas as arestas) a partir de 3 vértices,
+// reutilizando a função de traçar retas (Bresenham)
+function tracarTriangulo(p1, p2, p3) {
+  tracarLinha(p1.x, p1.y, p2.x, p2.y);
+  tracarLinha(p2.x, p2.y, p3.x, p3.y);
+  tracarLinha(p3.x, p3.y, p1.x, p1.y);
+}
+
+// ---------- Utilitários ----------
+
+function limparTela() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function atualizarInfo() {
+  const nomesModo = { reta: 'Reta', triangulo: 'Triângulo', cor: 'Cor', espessura: 'Espessura' };
+  statusEl.textContent = nomesModo[modo];
+  corInfoEl.textContent = `${corAtual} (${corIndice})`;
+  espInfoEl.textContent = espessura;
+  pontosEl.textContent = pontos.length;
+}
+
+// ---------- Figura inicial exigida pelo enunciado ----------
+// Uma linha azul de (0,0) a (0,0)
+limparTela();
+mudarCor(1); // azul
+tracarLinha(0, 0, 0, 0);
+atualizarInfo();
+
+// ---------- Controle de teclado ----------
+window.addEventListener('keydown', (e) => {
+  const tecla = e.key.toLowerCase();
+
+  if (tecla === 'r') {
+    modo = 'reta';
+    pontos = [];
+  } else if (tecla === 't') {
+    modo = 'triangulo';
+    pontos = [];
+  } else if (tecla === 'k') {
+    modo = 'cor';
+  } else if (tecla === 'e') {
+    modo = 'espessura';
+  } else if (modo === 'cor' && /^[0-9]$/.test(tecla)) {
+    mudarCor(parseInt(tecla));
+  } else if (modo === 'espessura' && /^[1-9]$/.test(tecla)) {
+    mudarEspessura(parseInt(tecla));
+  }
+
+  atualizarInfo();
+});
+
+// ---------- Controle de mouse ----------
+canvas.addEventListener('click', (e) => {
+  if (modo !== 'reta' && modo !== 'triangulo') return; // cliques só valem nesses modos
+
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  pontos.push({ x, y });
+
+  if (modo === 'reta' && pontos.length === 2) {
+    limparTela();                 // apaga a figura anterior
+    tracarLinha(pontos[0].x, pontos[0].y, pontos[1].x, pontos[1].y);
+    pontos = [];
+  } else if (modo === 'triangulo' && pontos.length === 3) {
+    limparTela();                 // apaga a figura anterior
+    tracarTriangulo(pontos[0], pontos[1], pontos[2]);
+    pontos = [];
+  }
+
+  atualizarInfo();
+});
+</script>
+
+</body>
+</html>
